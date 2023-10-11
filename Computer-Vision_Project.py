@@ -8,19 +8,14 @@ import numpy as np
 ## Task 1
 ##########################################
 
-
-### 1) Threshold the image 
-
-# 1.1) create_histogram
-# 1.2) threshold using otsu's
-# 1.3) show partial results
+##Function declaration
 
 def linear_stretching(img, max_value, min_value):
     img[img<min_value] = min_value
     img[img>max_value] = max_value
-    linear_stretched_img = 255./(max_value-min_value)*(img-min_value)
-    print("Output image type: ", linear_stretched_img.dtype)
-    return linear_stretched_img
+    transformed_img = 255./(max_value-min_value)*(img-min_value)
+    print("Output image type: ", transformed_img.dtype)
+    return transformed_img
 
 def exponential_operator(img, r):
     exp_img = ((img/255)**r) *255
@@ -36,123 +31,105 @@ def find_percentile_value(hist, percentile):
         s += hist[idx]
         idx += 1
     return idx
-print ('MELE')
-    ## Aprire le immagini
+
+show_images=False
+
 for i in range (3):    
-   
     img=cv2.imread(f"first task/C0_00000{i+1}.png", cv2.IMREAD_GRAYSCALE)
-    img = cv2.GaussianBlur(img, [0,0], 2, None, 2)
-
-    plt.imshow(img, cmap='gray')
-    plt.show()
-
-
-    thresh, filtered_img= cv2.threshold(img, 127, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-
-    exp_stretched_img=exponential_operator(np.copy(img), 0.5)
-    hist,bins = np.histogram(img.flatten(),256,[0,256])
-    plt.stem(hist)
-    plt.show()
+    img_blurred = cv2.GaussianBlur(np.copy(img), [0,0], 2, None, 2) #gaussian filtering, sigma fine tuned
+    if show_images: 
+        plt.imshow(img, cmap='gray')
+        plt.show()
+    thresh, thresh_img= cv2.threshold(img_blurred, 127, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU) #threshold without transformation
+    gamma_img=exponential_operator(np.copy(img_blurred), 0.5)
+    hist,bins = np.histogram(img_blurred.flatten(),256,[0,256])
+    #plt.stem(hist)
+    #plt.show()
     max_value = find_percentile_value(hist, 60)
     min_value = find_percentile_value(hist, 10)
-    linear_stretched_img = linear_stretching(exp_stretched_img, max_value, min_value)
-    actually_linear_stretched_img = linear_stretching(np.copy(img), max_value, min_value)
+    transformed_img = linear_stretching(gamma_img, max_value, min_value).astype(np.uint8) #light transformations for contrast
+    linear_stretched_img = linear_stretching(np.copy(img_blurred), max_value, min_value).astype(np.uint8) #as above w/out exp
 
-    hist_st,bins = np.histogram(linear_stretched_img.astype(np.uint8).flatten(),256,[0,256])
-    plt.imshow(linear_stretched_img,cmap='gray',vmin=0,vmax=255)
-    plt.show()
-    plt.title("Hist After Stretching")
-
-    # 1.4) Include "stem"
-
-    plt.stem(hist_st)
-    plt.show()
-    thresh, filtered_stretched_img= cv2.threshold(linear_stretched_img.astype(np.uint8), 127, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-
-    plt.subplot(1,2,1)
-    plt.imshow(filtered_img, cmap='gray')
-    plt.subplot(1,2,2)
-    plt.imshow(filtered_stretched_img, cmap='gray')
-    plt.show()
+    hist_st,bins = np.histogram(transformed_img.flatten(),256,[0,256])
+    if show_images:
+        plt.imshow(transformed_img,cmap='gray',vmin=0,vmax=255)
+        plt.show()
+    # plt.stem(hist_st)
+    # plt.show()
+    thresh, thres_transformed_image= cv2.threshold(transformed_img, 127, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU) #thresholding on transformed image
+    if show_images:
+        plt.subplot(1,2,1)
+        plt.imshow(thresh_img, cmap='gray')
+        plt.subplot(1,2,2)
+        plt.imshow(thres_transformed_image, cmap='gray')
+        plt.show()
 
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7))
-    filled_img = cv2.morphologyEx(filtered_stretched_img, cv2.MORPH_CLOSE, kernel)
-    plt.imshow(filled_img, cmap='gray')
-    plt.show()
+    filled_img = cv2.morphologyEx(thres_transformed_image, cv2.MORPH_CLOSE, kernel) #closing to improve borders
+    if show_images:
+        plt.imshow(filled_img, cmap='gray')
+        plt.show()
 
 
-    img_color=cv2.imread(f"first task/C1_00000{i+1}.png")
-    img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2RGB)
-    plt.subplot(1,2,1)
-    plt.imshow(img_color)
-
-    print(np.shape(filtered_stretched_img))
-    print(np.shape(img_color))
-
-    tensor = np.concatenate([[filled_img]]*3, axis = 0)
-    tensor = np.moveaxis (tensor, 0, -1)
-
-    print(np.shape(tensor))
-
-    img_color_masked = cv2.bitwise_and(tensor, img_color)
-    plt.subplot(1,2,2)
-    plt.imshow(img_color_masked)
-    plt.show()
-
-    #blob analysys scartando il primo blob (sfondo)
-
-    ### 2) Fill the blobs
-    # 2.1)
-
-    params = cv2.SimpleBlobDetector_Params()
+    img_color=cv2.imread(f"first task/C1_00000{i+1}.png") # open color images
+    img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2RGB) #convert to right color map
+    color_mask = np.concatenate([[filled_img]]*3, axis = 0) #create color mask 
+    color_mask = np.moveaxis (color_mask, 0, -1)
+    img_color_masked = cv2.bitwise_and(color_mask, img_color)
+    if show_images:
+        plt.subplot(1,2,1)
+        plt.imshow(img_color)
+        plt.subplot(1,2,2)
+        plt.imshow(img_color_masked)
+        plt.show()
 
 
-    params.filterByArea = True
-    params.minArea = 1
-    params.maxArea = 1000000000000
+    params = cv2.SimpleBlobDetector_Params() #create parameters for blob detection
+
+
+    params.filterByArea = False
     params.minRepeatability = 1
     params.minThreshold = 0
     params.maxThreshold = 20
     params.minDistBetweenBlobs = 4
 
     detector = cv2.SimpleBlobDetector_create(params)
-    keypoints = detector.detect(filled_img)
+    keypoints = detector.detect(filled_img) #find key points for blobs
 
-    blank = np.zeros((1, 1))
-    blobs = cv2.drawKeypoints(img_color_masked, keypoints, blank, (0, 255, 0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    plt.imshow(blobs)
-    plt.show()
-
+    if show_images and np.size(keypoints)!=0:
+        blank = np.zeros((1, 1))
+        blobs = cv2.drawKeypoints(img_color_masked, keypoints, blank, (0, 255, 0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        plt.imshow(blobs)
+        plt.show()
     points = cv2.KeyPoint_convert(keypoints)
-    print("\n blob centroids: ", points)
-
-    for keypoint in keypoints:
-        print(keypoint.size)
-
-
-
-    for pt in points:
+    for pt in points: # flood fill eventual holes in the apple
         cv2.floodFill(filled_img, None, tuple(pt.astype(int)), 255)
 
 
-    plt.imshow(filled_img, cmap='gray')
-    plt.show()
+    if show_images: 
+        plt.imshow(filled_img, cmap='gray')
+        plt.show()
 
 
-    tensor = np.concatenate([[filled_img]]*3, axis = 0)
-    tensor = np.moveaxis (tensor, 0, -1)
+    filled_color_mask = np.concatenate([[filled_img]]*3, axis = 0)
+    filled_color_mask = np.moveaxis (filled_color_mask, 0, -1)
 
-    print(np.shape(tensor))
+    img_color_masked = cv2.bitwise_and(filled_color_mask, img_color)
+    if show_images: 
+        plt.imshow(img_color_masked)
+        plt.show()
 
-    img_color_masked = cv2.bitwise_and(tensor, img_color)
-    plt.subplot(1,2,2)
+    img_gray_masked = cv2.bitwise_and(filled_img, linear_stretched_img.astype(np.uint8))
+    canny_threshold_high=100
+    canny_threshold_low=40
+    edges = cv2.Canny(img_gray_masked, canny_threshold_low, canny_threshold_high)
+    cv2.imwrite('canny.png', edges)
+    img_color_masked[:,:,2]=cv2.bitwise_or(img_color_masked[:,:,2], edges)
     plt.imshow(img_color_masked)
     plt.show()
 
-    img_gray_masked = cv2.bitwise_and(filled_img, actually_linear_stretched_img.astype(np.uint8))
-    edges = cv2.Canny(img_gray_masked, 50, 120)
-    plt.imshow(edges, cmap = "gray")
-    plt.show()
+
+
 ##########################################
 ## Task 2
 ##########################################
