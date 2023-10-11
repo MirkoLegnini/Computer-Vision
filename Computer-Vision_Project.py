@@ -120,12 +120,14 @@ for i in range (3):
         plt.show()
 
     img_gray_masked = cv2.bitwise_and(filled_img, linear_stretched_img.astype(np.uint8))
-    canny_threshold_high=100
-    canny_threshold_low=40
-    edges = cv2.Canny(img_gray_masked, canny_threshold_low, canny_threshold_high)
-    cv2.imwrite('canny.png', edges)
-    img_color_masked[:,:,2]=cv2.bitwise_or(img_color_masked[:,:,2], edges)
-    plt.imshow(img_color_masked)
+    img_blurred_masked = cv2.GaussianBlur(np.copy(img_gray_masked), [0,0], 0.7, None, 0.7)
+    canny_threshold_high=180
+    canny_threshold_low=10
+    edges = cv2.Canny(img_blurred_masked, canny_threshold_low, canny_threshold_high)
+    # img_color_masked[:,:,2]=cv2.bitwise_or(img_color_masked[:,:,2], edges)
+    # plt.imshow(img_color_masked)
+    img_edged=cv2.bitwise_or(img, edges)
+    plt.imshow(img_edged, cmap="gray")
     plt.show()
 
 
