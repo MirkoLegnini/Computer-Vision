@@ -8,7 +8,7 @@ print ('MELE')
 
 img=cv2.imread("first task/C0_000003.png", cv2.IMREAD_GRAYSCALE)
 
-img = cv2.GaussianBlur(img, [0,0], 1.5, None, 1.5)
+img = cv2.GaussianBlur(img, [0,0], 2, None, 2)
 
 plt.imshow(img, cmap='gray')
 plt.show()
@@ -34,6 +34,11 @@ def linear_stretching(img, max_value, min_value):
     print("Output image type: ", linear_stretched_img.dtype)
     return linear_stretched_img
 
+def exponential_operator(img, r):
+    exp_img = ((img/255)**r) *255
+    return exp_img
+
+
 
 def find_percentile_value(hist, percentile):
     s = 0
@@ -47,9 +52,11 @@ def find_percentile_value(hist, percentile):
 hist,bins = np.histogram(img.flatten(),256,[0,256])
 plt.stem(hist)
 plt.show()
-max_value = find_percentile_value(hist, 50)
-min_value = find_percentile_value(hist, 1)
-linear_stretched_img=linear_stretching(np.copy(img), max_value,min_value)
+max_value = find_percentile_value(hist, 60)
+min_value = find_percentile_value(hist, 10)
+exp_stretched_img=exponential_operator(np.copy(img), 0.5)
+linear_stretched_img = linear_stretching(exp_stretched_img, max_value, min_value)
+
 hist_st,bins = np.histogram(linear_stretched_img.astype(np.uint8).flatten(),256,[0,256])
 plt.imshow(linear_stretched_img,cmap='gray',vmin=0,vmax=255)
 plt.show()
@@ -67,7 +74,7 @@ plt.subplot(1,2,2)
 plt.imshow(filtered_stretched_img, cmap='gray')
 plt.show()
 
-kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10,10))
+kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7))
 filled_img = cv2.morphologyEx(filtered_stretched_img, cv2.MORPH_CLOSE, kernel)
 plt.imshow(filled_img, cmap='gray')
 plt.show()
@@ -96,8 +103,50 @@ plt.show()
 ### 2) Fill the blobs
 # 2.1)
 
+params = cv2.SimpleBlobDetector_Params()
 
 
+params.filterByArea = True
+params.minArea = 1
+params.maxArea = 1000000000000
+params.minRepeatability = 1
+params.minThreshold = 0
+params.maxThreshold = 20
+params.minDistBetweenBlobs = 4
+
+detector = cv2.SimpleBlobDetector_create(params)
+keypoints = detector.detect(filled_img)
+
+blank = np.zeros((1, 1))
+blobs = cv2.drawKeypoints(img_color_masked, keypoints, blank, (0, 255, 0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+plt.imshow(blobs)
+plt.show()
+
+points = cv2.KeyPoint_convert(keypoints)
+print("\n blob centroids: ", points)
+
+for keypoint in keypoints:
+    print(keypoint.size)
+
+
+
+for pt in points:
+    cv2.floodFill(filled_img, None, tuple(pt.astype(int)), 255)
+
+
+plt.imshow(filled_img, cmap='gray')
+plt.show()
+
+
+tensor = np.concatenate([[filled_img]]*3, axis = 0)
+tensor = np.moveaxis (tensor, 0, -1)
+
+print(np.shape(tensor))
+
+img_color_masked = cv2.bitwise_and(tensor, img_color)
+plt.subplot(1,2,2)
+plt.imshow(img_color_masked)
+plt.show()
 ##########################################
 ## Task 2
 ##########################################
