@@ -49,13 +49,14 @@ for i in range (3):
 
     thresh, filtered_img= cv2.threshold(img, 127, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
 
+    exp_stretched_img=exponential_operator(np.copy(img), 0.5)
     hist,bins = np.histogram(img.flatten(),256,[0,256])
     plt.stem(hist)
     plt.show()
     max_value = find_percentile_value(hist, 60)
     min_value = find_percentile_value(hist, 10)
-    exp_stretched_img=exponential_operator(np.copy(img), 0.5)
     linear_stretched_img = linear_stretching(exp_stretched_img, max_value, min_value)
+    actually_linear_stretched_img = linear_stretching(np.copy(img), max_value, min_value)
 
     hist_st,bins = np.histogram(linear_stretched_img.astype(np.uint8).flatten(),256,[0,256])
     plt.imshow(linear_stretched_img,cmap='gray',vmin=0,vmax=255)
@@ -146,6 +147,11 @@ for i in range (3):
     img_color_masked = cv2.bitwise_and(tensor, img_color)
     plt.subplot(1,2,2)
     plt.imshow(img_color_masked)
+    plt.show()
+
+    img_gray_masked = cv2.bitwise_and(filled_img, actually_linear_stretched_img.astype(np.uint8))
+    edges = cv2.Canny(img_gray_masked, 50, 120)
+    plt.imshow(edges, cmap = "gray")
     plt.show()
 ##########################################
 ## Task 2
