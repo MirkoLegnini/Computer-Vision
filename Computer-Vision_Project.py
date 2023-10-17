@@ -10,12 +10,20 @@ import numpy as np
 
 ##Function declaration
 
-def linear_stretching(img, max_value, min_value):
+
+
+def linear_stretching_inner(img, max_value, min_value):
     img[img<min_value] = min_value
     img[img>max_value] = max_value
     transformed_img = 255./(max_value-min_value)*(img-min_value)
     print("Output image type: ", transformed_img.dtype)
     return transformed_img
+
+def linear_stretching(img, hist, min_perc, max_perc):
+    max_value = find_percentile_value(hist, max_perc)
+    min_value = find_percentile_value(hist, min_perc)
+    res = linear_stretching_inner(img, max_value, min_value).astype(np.uint8) #light transformations for contrast
+    return res
 
 def exponential_operator(img, r):
     exp_img = ((img/255)**r) *255
@@ -32,24 +40,13 @@ def find_percentile_value(hist, percentile):
         idx += 1
     return idx
 
-show_images=False
 
-for i in range (3):    
-    img=cv2.imread(f"first task/C0_00000{i+1}.png", cv2.IMREAD_GRAYSCALE)
-    # img_median=cv2.medianBlur(np.copy(img), 5)
-    img_blurred = cv2.GaussianBlur(np.copy(img), [0,0], 2, None, 2) #gaussian filtering, sigma fine tuned
-    if show_images: 
-        plt.imshow(img, cmap='gray')
-        plt.show()
-    thresh, thresh_img= cv2.threshold(img_blurred, 127, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU) #threshold without transformation
-    gamma_img=exponential_operator(np.copy(img_blurred), 1/4)
+def create_binary_mask(img_blurred, r, min_perc, max_perc):
+    gamma_img=exponential_operator(np.copy(img_blurred), r)
     hist,bins = np.histogram(img_blurred.flatten(),256,[0,256])
     #plt.stem(hist)
     #plt.show()
-    max_value = find_percentile_value(hist, 70)
-    min_value = find_percentile_value(hist, 10)
-    transformed_img = linear_stretching(gamma_img, max_value, min_value).astype(np.uint8) #light transformations for contrast
-    linear_stretched_img = linear_stretching(np.copy(img_blurred), max_value, min_value).astype(np.uint8) #as above w/out exp
+    transformed_img=linear_stretching(gamma_img,hist, min_perc, max_perc);
     hist_st,bins = np.histogram(transformed_img.flatten(),256,[0,256])
     if show_images:
         plt.imshow(transformed_img,cmap='gray',vmin=0,vmax=255)
@@ -73,10 +70,28 @@ for i in range (3):
         plt.show()
 
 
+    return filled_img
+
+
+show_images=True
+
+for i in range (3):    
+    ## Parameter declaration for light transformations
+    min_perc=10
+    max_perc=70
+    r=0.25
+
+    img=cv2.imread(f"first task/C0_00000{i+1}.png", cv2.IMREAD_GRAYSCALE)
+    img_blurred = cv2.GaussianBlur(np.copy(img), [0,0], 2, None, 2) #gaussian filtering, sigma fine tuned
+    if show_images: 
+        plt.imshow(img, cmap='gray')
+        plt.show()
+    binary_mask=create_binary_mask(np.copy(img_blurred), r, min_perc, max_perc)
+
+
     img_color=cv2.imread(f"first task/C1_00000{i+1}.png") # open color images
     img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2RGB) #convert to right color map
-    color_mask = np.concatenate([[filled_img]]*3, axis = 0) #create color mask 
-    color_mask = np.moveaxis (color_mask, 0, -1)
+    color_mask = cv2.merge([binary_mask, binary_mask, binary_mask]) #create color mask 
     img_color_masked = cv2.bitwise_and(color_mask, img_color)
     if show_images:
         plt.subplot(1,2,1)
@@ -96,7 +111,7 @@ for i in range (3):
     params.minDistBetweenBlobs = 4
 
     detector = cv2.SimpleBlobDetector_create(params)
-    keypoints = detector.detect(filled_img) #find key points for blobs
+    keypoints = detector.detect(binary_mask) #find key points for blobs
 
     if show_images and np.size(keypoints)!=0:
         blank = np.zeros((1, 1))
@@ -105,23 +120,26 @@ for i in range (3):
         plt.show()
     points = cv2.KeyPoint_convert(keypoints)
     for pt in points: # flood fill eventual holes in the apple
-        cv2.floodFill(filled_img, None, tuple(pt.astype(int)), 255)
+        cv2.floodFill(binary_mask, None, tuple(pt.astype(int)), 255)
 
 
     if show_images: 
-        plt.imshow(filled_img, cmap='gray')
+        plt.imshow(binary_mask, cmap='gray')
         plt.show()
 
 
-    filled_color_mask = np.concatenate([[filled_img]]*3, axis = 0)
-    filled_color_mask = np.moveaxis (filled_color_mask, 0, -1)
+    filled_color_mask = cv2.merge([binary_mask, binary_mask, binary_mask])
 
     img_color_masked = cv2.bitwise_and(filled_color_mask, img_color)
     if show_images: 
         plt.imshow(img_color_masked)
         plt.show()
 
-    img_gray_masked = cv2.bitwise_and(filled_img, linear_stretched_img.astype(np.uint8))
+
+
+    hist,bins = np.histogram(img_blurred.flatten(),256,[0,256])
+    linear_stretched_img=linear_stretching(np.copy(img_blurred),hist, min_perc, max_perc)
+    img_gray_masked = cv2.bitwise_and(binary_mask, linear_stretched_img.astype(np.uint8))
     img_blurred_masked = cv2.GaussianBlur(np.copy(img_gray_masked), [0,0], 0.7, None, 0.7)
     canny_threshold_high=120
     canny_threshold_low=10
@@ -131,19 +149,17 @@ for i in range (3):
     # img_color_masked[:,:,2]=cv2.bitwise_or(img_color_masked[:,:,2], edges)
     # plt.imshow(img_color_masked)
     img_edged=cv2.bitwise_or(img, filled_edges)
-    if show_images:
-        plt.imshow(img_edged, cmap="gray")
-        plt.show()
+    plt.imshow(img_edged, cmap="gray")
+    plt.show()
     # get contours from image
-    contours, hierarchy = cv2.findContours(filled_edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE) #returns a list of contours that were found with canny
-    img=cv2.merge([img,img,img]) # for pretty images
+    contours, hierarchy = cv2.findContours(filled_edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    img=cv2.merge([img, img, img])
     for i in range(len(contours)):
-        opened =  hierarchy[0][i][2]<0 # hierarchy[0][i][2] stores the i-th contour's first child contour. If no children are present, the contour is open and the value is -1
-        if (not opened) and cv2.contourArea(contours[i])<20000: # second condition excludes very large contours (the apple's contour)
+        opened =  hierarchy[0][i][2]<0
+        if (not opened) and cv2.contourArea(contours[i])<20000:
             cv2.drawContours(img, contours, i, (0,255,0), 2)
-    if show_images:
-        plt.imshow(img)
-        plt.show()
+    plt.imshow(img)
+    plt.show()
 
 ##########################################
 ## Task 2
