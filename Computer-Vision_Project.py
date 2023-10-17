@@ -188,28 +188,31 @@ for i in range(2):
         plt.show()
     # finding average image colour
     mean_clr = np.nanmean(np.where(img_color_masked!=0,img_color_masked,np.nan),(0,1))
-    print("mean is: ", mean_clr)
+    #print("mean is: ", mean_clr)
     #variance = np.cov(np.where(img_color_masked[:,:,0]!=0,img_color_masked,np[:,:,0].nan))
     #variance = np.cov(np.where(img_color_masked[:,:,1]!=0,img_color_masked,np[:,:,1].nan))
     #variance = np.cov(np.where(img_color_masked[:,:,2]!=0,img_color_masked,np[:,:,2].nan))
     flat = img_color_masked.reshape(-1,3).T
     cov = np.cov(np.where(flat!=0, flat, flat))
-    print("variance is: ", cov)
+    #print("variance is: ", cov)
     mean_img = np.zeros(np.shape(img_color))
     mean_img[:]=mean_clr
-    print("color mask shape: ", np.shape(img_color_masked))
-    print("mean shape: ", np.shape(mean_img))
-    print(type(img_color_masked))
+    #print("color mask shape: ", np.shape(img_color_masked))
+    #print("mean shape: ", np.shape(mean_img))
+    #print(type(img_color_masked))
     #covar, mean = cv2.calcCovarMatrix(np.where(flat!=0,flat, flat), None, cv2.COVAR_NORMAL | cv2.COVAR_COLS)
     #print("mean with cv2 is: ", mean)
     #print("covar with cv2 is: ", covar)
 
     iconv = np.linalg.inv(cov)
-    vect_mahal= np.vectorize(cv2.Mahalanobis)
+    #vect_mahal= np.vectorize(cv2.Mahalanobis)
 
-    diff = vect_mahal(img_color_masked,mean_img,iconv)  
-    
-    plt.imshow(diff)
+    #diff = vect_mahal(img_color_masked,mean_img,iconv)  
+    img_flat = np.reshape(img_color_masked,(270*250,3))
+    mean_flat = np.reshape(mean_img,(270*250,3))
+    mahal = np.dot(np.dot(img_flat-mean_flat,iconv),(img_flat-mean_flat).T)
+    mahal_img = mahal.reshape(270,250,3)
+    plt.imshow(mahal_img)
     plt.show()
 ##########################################
 ## Task 3
