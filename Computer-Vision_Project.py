@@ -73,23 +73,110 @@ def create_binary_mask(img_blurred, r, min_perc, max_perc):
     return filled_img
 
 
-show_images=True
+show_images=False
+if 0:
+    for i in range (3):    
+        ## Parameter declaration for light transformations
+        min_perc=10
+        max_perc=70
+        r=0.25
+    
+        img=cv2.imread(f"first task/C0_00000{i+1}.png", cv2.IMREAD_GRAYSCALE)
+        img_blurred = cv2.GaussianBlur(np.copy(img), [0,0], 2, None, 2) #gaussian filtering, sigma fine tuned
+        if show_images: 
+            plt.imshow(img, cmap='gray')
+            plt.show()
+        binary_mask=create_binary_mask(np.copy(img_blurred), r, min_perc, max_perc)
+    
+    
+        img_color=cv2.imread(f"first task/C1_00000{i+1}.png") # open color images
+        img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2RGB) #convert to right color map
+        color_mask = cv2.merge([binary_mask, binary_mask, binary_mask]) #create color mask 
+        img_color_masked = cv2.bitwise_and(color_mask, img_color)
+        if show_images:
+            plt.subplot(1,2,1)
+            plt.imshow(img_color)
+            plt.subplot(1,2,2)
+            plt.imshow(img_color_masked)
+            plt.show()
+    
+    
+        params = cv2.SimpleBlobDetector_Params() #create parameters for blob detection
+    
+    
+        params.filterByArea = False
+        params.minRepeatability = 1
+        params.minThreshold = 0
+        params.maxThreshold = 20
+        params.minDistBetweenBlobs = 4
+    
+        detector = cv2.SimpleBlobDetector_create(params)
+        keypoints = detector.detect(binary_mask) #find key points for blobs
+    
+        if show_images and np.size(keypoints)!=0:
+            blank = np.zeros((1, 1))
+            blobs = cv2.drawKeypoints(img_color_masked, keypoints, blank, (0, 255, 0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+            plt.imshow(blobs)
+            plt.show()
+        points = cv2.KeyPoint_convert(keypoints)
+        for pt in points: # flood fill eventual holes in the apple
+            cv2.floodFill(binary_mask, None, tuple(pt.astype(int)), 255)
+    
+    
+        if show_images: 
+            plt.imshow(binary_mask, cmap='gray')
+            plt.show()
+    
+    
+        filled_color_mask = cv2.merge([binary_mask, binary_mask, binary_mask])
+    
+        img_color_masked = cv2.bitwise_and(filled_color_mask, img_color)
+        if show_images: 
+            plt.imshow(img_color_masked)
+            plt.show()
+    
+    
+    
+        hist,bins = np.histogram(img_blurred.flatten(),256,[0,256])
+        linear_stretched_img=linear_stretching(np.copy(img_blurred),hist, min_perc, max_perc)
+        img_gray_masked = cv2.bitwise_and(binary_mask, linear_stretched_img.astype(np.uint8))
+        img_blurred_masked = cv2.GaussianBlur(np.copy(img_gray_masked), [0,0], 0.7, None, 0.7)
+        canny_threshold_high=120
+        canny_threshold_low=10
+        edges = cv2.Canny(img_blurred_masked, canny_threshold_low, canny_threshold_high)
+        edges_kernel= cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7))
+        filled_edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, edges_kernel) #closing to improve borders
+        # img_color_masked[:,:,2]=cv2.bitwise_or(img_color_masked[:,:,2], edges)
+        # plt.imshow(img_color_masked)
+        img_edged=cv2.bitwise_or(img, filled_edges)
+        plt.imshow(img_edged, cmap="gray")
+        plt.show()
+        # get contours from image
+        contours, hierarchy = cv2.findContours(filled_edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+        img=cv2.merge([img, img, img])
+        for i in range(len(contours)):
+            opened =  hierarchy[0][i][2]<0
+            if (not opened) and cv2.contourArea(contours[i])<20000:
+                cv2.drawContours(img, contours, i, (0,255,0), 2)
+        plt.imshow(img)
+        plt.show()
 
-for i in range (3):    
-    ## Parameter declaration for light transformations
+##########################################
+## Task 2
+##########################################
+for i in range(2):
+    img=cv2.imread(f"second task/C0_00000{i+4}.png", cv2.IMREAD_GRAYSCALE)
     min_perc=10
     max_perc=70
-    r=0.25
+    r=0.35
 
-    img=cv2.imread(f"first task/C0_00000{i+1}.png", cv2.IMREAD_GRAYSCALE)
     img_blurred = cv2.GaussianBlur(np.copy(img), [0,0], 2, None, 2) #gaussian filtering, sigma fine tuned
     if show_images: 
         plt.imshow(img, cmap='gray')
         plt.show()
     binary_mask=create_binary_mask(np.copy(img_blurred), r, min_perc, max_perc)
-
-
-    img_color=cv2.imread(f"first task/C1_00000{i+1}.png") # open color images
+    
+    img_color=cv2.imread(f"second task/C1_00000{i+4}.png") # open color images
     img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2RGB) #convert to right color map
     color_mask = cv2.merge([binary_mask, binary_mask, binary_mask]) #create color mask 
     img_color_masked = cv2.bitwise_and(color_mask, img_color)
@@ -99,75 +186,31 @@ for i in range (3):
         plt.subplot(1,2,2)
         plt.imshow(img_color_masked)
         plt.show()
+    # finding average image colour
+    mean_clr = np.nanmean(np.where(img_color_masked!=0,img_color_masked,np.nan),(0,1))
+    print("mean is: ", mean_clr)
+    #variance = np.cov(np.where(img_color_masked[:,:,0]!=0,img_color_masked,np[:,:,0].nan))
+    #variance = np.cov(np.where(img_color_masked[:,:,1]!=0,img_color_masked,np[:,:,1].nan))
+    #variance = np.cov(np.where(img_color_masked[:,:,2]!=0,img_color_masked,np[:,:,2].nan))
+    flat = img_color_masked.reshape(-1,3).T
+    cov = np.cov(np.where(flat!=0, flat, flat))
+    print("variance is: ", cov)
+    mean_img = np.zeros(np.shape(img_color))
+    mean_img[:]=mean_clr
+    print("color mask shape: ", np.shape(img_color_masked))
+    print("mean shape: ", np.shape(mean_img))
+    print(type(img_color_masked))
+    #covar, mean = cv2.calcCovarMatrix(np.where(flat!=0,flat, flat), None, cv2.COVAR_NORMAL | cv2.COVAR_COLS)
+    #print("mean with cv2 is: ", mean)
+    #print("covar with cv2 is: ", covar)
 
+    iconv = np.linalg.inv(cov)
+    vect_mahal= np.vectorize(cv2.Mahalanobis)
 
-    params = cv2.SimpleBlobDetector_Params() #create parameters for blob detection
-
-
-    params.filterByArea = False
-    params.minRepeatability = 1
-    params.minThreshold = 0
-    params.maxThreshold = 20
-    params.minDistBetweenBlobs = 4
-
-    detector = cv2.SimpleBlobDetector_create(params)
-    keypoints = detector.detect(binary_mask) #find key points for blobs
-
-    if show_images and np.size(keypoints)!=0:
-        blank = np.zeros((1, 1))
-        blobs = cv2.drawKeypoints(img_color_masked, keypoints, blank, (0, 255, 0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-        plt.imshow(blobs)
-        plt.show()
-    points = cv2.KeyPoint_convert(keypoints)
-    for pt in points: # flood fill eventual holes in the apple
-        cv2.floodFill(binary_mask, None, tuple(pt.astype(int)), 255)
-
-
-    if show_images: 
-        plt.imshow(binary_mask, cmap='gray')
-        plt.show()
-
-
-    filled_color_mask = cv2.merge([binary_mask, binary_mask, binary_mask])
-
-    img_color_masked = cv2.bitwise_and(filled_color_mask, img_color)
-    if show_images: 
-        plt.imshow(img_color_masked)
-        plt.show()
-
-
-
-    hist,bins = np.histogram(img_blurred.flatten(),256,[0,256])
-    linear_stretched_img=linear_stretching(np.copy(img_blurred),hist, min_perc, max_perc)
-    img_gray_masked = cv2.bitwise_and(binary_mask, linear_stretched_img.astype(np.uint8))
-    img_blurred_masked = cv2.GaussianBlur(np.copy(img_gray_masked), [0,0], 0.7, None, 0.7)
-    canny_threshold_high=120
-    canny_threshold_low=10
-    edges = cv2.Canny(img_blurred_masked, canny_threshold_low, canny_threshold_high)
-    edges_kernel= cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7))
-    filled_edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, edges_kernel) #closing to improve borders
-    # img_color_masked[:,:,2]=cv2.bitwise_or(img_color_masked[:,:,2], edges)
-    # plt.imshow(img_color_masked)
-    img_edged=cv2.bitwise_or(img, filled_edges)
-    plt.imshow(img_edged, cmap="gray")
+    diff = vect_mahal(img_color_masked,mean_img,iconv)  
+    
+    plt.imshow(diff)
     plt.show()
-    # get contours from image
-    contours, hierarchy = cv2.findContours(filled_edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
-    img=cv2.merge([img, img, img])
-    for i in range(len(contours)):
-        opened =  hierarchy[0][i][2]<0
-        if (not opened) and cv2.contourArea(contours[i])<20000:
-            cv2.drawContours(img, contours, i, (0,255,0), 2)
-    plt.imshow(img)
-    plt.show()
-
-##########################################
-## Task 2
-##########################################
-
-
-
-
 ##########################################
 ## Task 3
 ##########################################
