@@ -131,8 +131,9 @@ for i in range (3):
     # img_color_masked[:,:,2]=cv2.bitwise_or(img_color_masked[:,:,2], edges)
     # plt.imshow(img_color_masked)
     img_edged=cv2.bitwise_or(img, filled_edges)
-    plt.imshow(img_edged, cmap="gray")
-    plt.show()
+    if show_images:
+        plt.imshow(img_edged, cmap="gray")
+        plt.show()
     # get contours from image
     contours, hierarchy = cv2.findContours(filled_edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE) #returns a list of contours that were found with canny
     img=cv2.merge([img,img,img]) # for pretty images
@@ -140,8 +141,9 @@ for i in range (3):
         opened =  hierarchy[0][i][2]<0 # hierarchy[0][i][2] stores the i-th contour's first child contour. If no children are present, the contour is open and the value is -1
         if (not opened) and cv2.contourArea(contours[i])<20000: # second condition excludes very large contours (the apple's contour)
             cv2.drawContours(img, contours, i, (0,255,0), 2)
-    plt.imshow(img)
-    plt.show()
+    if show_images:
+        plt.imshow(img)
+        plt.show()
 
 ##########################################
 ## Task 2
