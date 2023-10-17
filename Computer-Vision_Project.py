@@ -32,24 +32,24 @@ def find_percentile_value(hist, percentile):
         idx += 1
     return idx
 
-show_images=False
+show_images=True
 
 for i in range (3):    
     img=cv2.imread(f"first task/C0_00000{i+1}.png", cv2.IMREAD_GRAYSCALE)
+    # img_median=cv2.medianBlur(np.copy(img), 5)
     img_blurred = cv2.GaussianBlur(np.copy(img), [0,0], 2, None, 2) #gaussian filtering, sigma fine tuned
     if show_images: 
         plt.imshow(img, cmap='gray')
         plt.show()
     thresh, thresh_img= cv2.threshold(img_blurred, 127, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU) #threshold without transformation
-    gamma_img=exponential_operator(np.copy(img_blurred), 0.5)
+    gamma_img=exponential_operator(np.copy(img_blurred), 1/4)
     hist,bins = np.histogram(img_blurred.flatten(),256,[0,256])
     #plt.stem(hist)
     #plt.show()
-    max_value = find_percentile_value(hist, 60)
+    max_value = find_percentile_value(hist, 70)
     min_value = find_percentile_value(hist, 10)
     transformed_img = linear_stretching(gamma_img, max_value, min_value).astype(np.uint8) #light transformations for contrast
     linear_stretched_img = linear_stretching(np.copy(img_blurred), max_value, min_value).astype(np.uint8) #as above w/out exp
-
     hist_st,bins = np.histogram(transformed_img.flatten(),256,[0,256])
     if show_images:
         plt.imshow(transformed_img,cmap='gray',vmin=0,vmax=255)
@@ -58,14 +58,16 @@ for i in range (3):
     # plt.show()
     thresh, thres_transformed_image= cv2.threshold(transformed_img, 127, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU) #thresholding on transformed image
     if show_images:
-        plt.subplot(1,2,1)
-        plt.imshow(thresh_img, cmap='gray')
-        plt.subplot(1,2,2)
+        # plt.subplot(1,2,1)
+        # #plt.imshow(thresh_img, cmap='gray')
+        # plt.subplot(1,2,2)
         plt.imshow(thres_transformed_image, cmap='gray')
         plt.show()
 
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7))
-    filled_img = cv2.morphologyEx(thres_transformed_image, cv2.MORPH_CLOSE, kernel) #closing to improve borders
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7))
+    # filled_img = cv2.morphologyEx(thres_transformed_image, cv2.MORPH_CLOSE, kernel) #closing to improve borders
+    # filled_img=cv2.medianBlur(np.copy(img), 5) # bello ma no
+    filled_img=cv2.medianBlur(np.copy(thres_transformed_image), 13)
     if show_images:
         plt.imshow(filled_img, cmap='gray')
         plt.show()
@@ -121,12 +123,14 @@ for i in range (3):
 
     img_gray_masked = cv2.bitwise_and(filled_img, linear_stretched_img.astype(np.uint8))
     img_blurred_masked = cv2.GaussianBlur(np.copy(img_gray_masked), [0,0], 0.7, None, 0.7)
-    canny_threshold_high=180
+    canny_threshold_high=120
     canny_threshold_low=10
     edges = cv2.Canny(img_blurred_masked, canny_threshold_low, canny_threshold_high)
+    edges_kernel= cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7))
+    filled_edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, edges_kernel) #closing to improve borders
     # img_color_masked[:,:,2]=cv2.bitwise_or(img_color_masked[:,:,2], edges)
     # plt.imshow(img_color_masked)
-    img_edged=cv2.bitwise_or(img, edges)
+    img_edged=cv2.bitwise_or(img, filled_edges)
     plt.imshow(img_edged, cmap="gray")
     plt.show()
 
