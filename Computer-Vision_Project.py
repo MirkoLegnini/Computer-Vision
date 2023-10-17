@@ -134,11 +134,11 @@ for i in range (3):
     plt.imshow(img_edged, cmap="gray")
     plt.show()
     # get contours from image
-    contours, hierarchy = cv2.findContours(filled_edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
-    img=cv2.merge([img,img,img])
+    contours, hierarchy = cv2.findContours(filled_edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE) #returns a list of contours that were found with canny
+    img=cv2.merge([img,img,img]) # for pretty images
     for i in range(len(contours)):
-        opened =  hierarchy[0][i][2]<0
-        if (not opened) and cv2.contourArea(contours[i])<20000:
+        opened =  hierarchy[0][i][2]<0 # hierarchy[0][i][2] stores the i-th contour's first child contour. If no children are present, the contour is open and the value is -1
+        if (not opened) and cv2.contourArea(contours[i])<20000: # second condition excludes very large contours (the apple's contour)
             cv2.drawContours(img, contours, i, (0,255,0), 2)
     plt.imshow(img)
     plt.show()
