@@ -135,18 +135,11 @@ for i in range (3):
     plt.show()
     # get contours from image
     contours, hierarchy = cv2.findContours(filled_edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
-    
-    # draw all contours to image (green if opened else red)
+    img=cv2.merge([img,img,img])
     for i in range(len(contours)):
         opened =  hierarchy[0][i][2]<0
-        if opened:
-            print("opened dio bestia")
-        elif cv2.contourArea(contours[i])<20000:
+        if (not opened) and cv2.contourArea(contours[i])<20000:
             cv2.drawContours(img, contours, i, (0,255,0), 2)
-    #for i in range(len(contours)):
-    #    if cv2.contourArea(contours[i]) > cv2.arcLength(contours[i],True):
-    #        cv2.drawContours(img, contours, i, (0,255,0), 2)
-    #cv2.imshow("Contours", img)
     plt.imshow(img)
     plt.show()
 
