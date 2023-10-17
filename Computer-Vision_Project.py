@@ -32,7 +32,7 @@ def find_percentile_value(hist, percentile):
         idx += 1
     return idx
 
-show_images=True
+show_images=False
 
 for i in range (3):    
     img=cv2.imread(f"first task/C0_00000{i+1}.png", cv2.IMREAD_GRAYSCALE)
@@ -133,8 +133,22 @@ for i in range (3):
     img_edged=cv2.bitwise_or(img, filled_edges)
     plt.imshow(img_edged, cmap="gray")
     plt.show()
-
-
+    # get contours from image
+    contours, hierarchy = cv2.findContours(filled_edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    
+    # draw all contours to image (green if opened else red)
+    for i in range(len(contours)):
+        opened =  hierarchy[0][i][2]<0
+        if opened:
+            print("opened dio bestia")
+        elif cv2.contourArea(contours[i])<20000:
+            cv2.drawContours(img, contours, i, (0,255,0), 2)
+    #for i in range(len(contours)):
+    #    if cv2.contourArea(contours[i]) > cv2.arcLength(contours[i],True):
+    #        cv2.drawContours(img, contours, i, (0,255,0), 2)
+    #cv2.imshow("Contours", img)
+    plt.imshow(img)
+    plt.show()
 
 ##########################################
 ## Task 2
