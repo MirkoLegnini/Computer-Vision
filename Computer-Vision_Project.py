@@ -177,7 +177,7 @@ for i in range(2):
     binary_mask=create_binary_mask(np.copy(img_blurred), r, min_perc, max_perc)
     
     img_color=cv2.imread(f"second task/C1_00000{i+4}.png") # open color images
-    img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2RGB) #convert to right color map
+    img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2HSV) #convert to right color map
     color_mask = cv2.merge([binary_mask, binary_mask, binary_mask]) #create color mask 
     img_color_masked = cv2.bitwise_and(color_mask, img_color)
     if show_images:
@@ -196,7 +196,13 @@ for i in range(2):
     cov = np.cov(np.where(flat!=0, flat, flat))
     #print("variance is: ", cov)
     mean_img = np.zeros(np.shape(img_color))
+    print(mean_clr)
+
     mean_img[:]=mean_clr
+    print(np.shape(mean_img))
+    print(mean_img[0][0])
+    plt.imshow(mean_img.astype(np.uint8))
+    plt.show()
     #print("color mask shape: ", np.shape(img_color_masked))
     #print("mean shape: ", np.shape(mean_img))
     #print(type(img_color_masked))
@@ -209,10 +215,18 @@ for i in range(2):
 
     #diff = vect_mahal(img_color_masked,mean_img,iconv)  
     img_flat = np.reshape(img_color_masked,(270*250,3))
+    
     mean_flat = np.reshape(mean_img,(270*250,3))
-    mahal = np.dot(np.dot(img_flat-mean_flat,iconv),(img_flat-mean_flat).T)
-    mahal_img = mahal.reshape(270,250,3)
-    plt.imshow(mahal_img)
+    diff=img_flat-mean_flat
+    diff[diff<0]=0
+    print(diff)
+    mahal = np.multiply(np.dot(diff,iconv),diff).sum(-1)
+    print(np.shape(mahal))
+    mahal_img = mahal.reshape(270,250)
+    plt.subplot(1,2,1)
+    plt.imshow(img_color)
+    plt.subplot(1,2,2)
+    plt.imshow(mahal_img, cmap="gray")
     plt.show()
 ##########################################
 ## Task 3
