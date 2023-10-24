@@ -103,7 +103,7 @@ def create_binary_mask(img_blurred, r, min_perc, max_perc):
 
 show_images=True
 show_images_2=True
-if 1:
+if 0:
     for i in range (1):    
         ## Parameter declaration for light transformations
         min_perc=10
@@ -225,19 +225,23 @@ for i in range(2):
     #vect_mahal= np.vectorize(cv2.Mahalanobis)
 
     #diff = vect_mahal(img_color_masked,mean_img,iconv)  
-    img_flat = np.reshape(img_color_masked,(270*250,3))
+    img_flat = np.reshape(img_color_masked,(np.shape(img_color_masked)[0]*np.shape(img_color_masked)[1],3))
     
-    mean_flat = np.reshape(mean_img,(270*250,3))
+    mean_flat = np.reshape(mean_img,(np.shape(img_color_masked)[0]*np.shape(img_color_masked)[1],3))
     diff=img_flat-mean_flat
     diff[img_flat==0]=0
     print(diff)
     mahal = np.sqrt(np.multiply(np.dot(diff,iconv),diff).sum(-1))
     print(np.shape(mahal))
-    mahal_img = mahal.reshape(270,250)
+    mahal_img = mahal.reshape(np.shape(img_color_masked)[0],np.shape(img_color_masked)[1])
     plt.subplot(1,2,1)
     plt.imshow(img_color)
     plt.subplot(1,2,2)
     plt.imshow(mahal_img, cmap="gray")
+    plt.show()
+    
+    hist,bins = np.histogram(mahal_img.flatten(),256,[0,256])
+    plt.stem(hist)
     plt.show()
 ##########################################
 ## Task 3
