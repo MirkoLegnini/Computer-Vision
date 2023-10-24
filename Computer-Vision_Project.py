@@ -69,13 +69,42 @@ def create_binary_mask(img_blurred, r, min_perc, max_perc):
         plt.imshow(filled_img, cmap='gray')
         plt.show()
 
+    params = cv2.SimpleBlobDetector_Params() #create parameters for blob detection
+    
+    
+    params.filterByArea = False
+    params.minRepeatability = 1
+    params.minThreshold = 0
+    params.maxThreshold = 20
+    params.minDistBetweenBlobs = 4
+    params.filterByCircularity = False 
+    params.filterByInertia = False
+    params.filterByConvexity = False
+    detector = cv2.SimpleBlobDetector_create(params)
+    keypoints = detector.detect(filled_img) #find key points for blobs
+    
+    if show_images and np.size(keypoints)!=0:
+        blank = np.zeros((1, 1))
+        blobs = cv2.drawKeypoints(filled_img, keypoints, blank, (0, 255, 0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        plt.imshow(blobs)
+        plt.show()
+    points = cv2.KeyPoint_convert(keypoints)
+    for pt in points: # flood fill eventual holes in the apple
+        cv2.floodFill(filled_img, None, tuple(pt.astype(int)), 255)
+    
+    
+    if show_images: 
+        plt.imshow(filled_img, cmap='gray')
+        plt.show()
+    
 
     return filled_img
 
 
-show_images=False
-if 0:
-    for i in range (3):    
+show_images=True
+show_images_2=True
+if 1:
+    for i in range (1):    
         ## Parameter declaration for light transformations
         min_perc=10
         max_perc=70
@@ -101,33 +130,7 @@ if 0:
             plt.show()
     
     
-        params = cv2.SimpleBlobDetector_Params() #create parameters for blob detection
-    
-    
-        params.filterByArea = False
-        params.minRepeatability = 1
-        params.minThreshold = 0
-        params.maxThreshold = 20
-        params.minDistBetweenBlobs = 4
-    
-        detector = cv2.SimpleBlobDetector_create(params)
-        keypoints = detector.detect(binary_mask) #find key points for blobs
-    
-        if show_images and np.size(keypoints)!=0:
-            blank = np.zeros((1, 1))
-            blobs = cv2.drawKeypoints(img_color_masked, keypoints, blank, (0, 255, 0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-            plt.imshow(blobs)
-            plt.show()
-        points = cv2.KeyPoint_convert(keypoints)
-        for pt in points: # flood fill eventual holes in the apple
-            cv2.floodFill(binary_mask, None, tuple(pt.astype(int)), 255)
-    
-    
-        if show_images: 
-            plt.imshow(binary_mask, cmap='gray')
-            plt.show()
-    
-    
+        
         filled_color_mask = cv2.merge([binary_mask, binary_mask, binary_mask])
     
         img_color_masked = cv2.bitwise_and(filled_color_mask, img_color)
@@ -165,51 +168,76 @@ if 0:
 ## Task 2
 ##########################################
 for i in range(2):
-    img=cv2.imread(f"second task/C0_00000{i+4}.png", cv2.IMREAD_GRAYSCALE)
+    img=cv2.imread(f"second task/C1_00000{i+4}.png")
     min_perc=10
     max_perc=70
-    r=0.35
-
-    img_blurred = cv2.GaussianBlur(np.copy(img), [0,0], 2, None, 2) #gaussian filtering, sigma fine tuned
+    r=0.5
+    img_bw=cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img_blurred = cv2.GaussianBlur(np.copy(img_bw), [0,0], 2, None, 2) #gaussian filtering, sigma fine tuned
     if show_images: 
         plt.imshow(img, cmap='gray')
         plt.show()
     binary_mask=create_binary_mask(np.copy(img_blurred), r, min_perc, max_perc)
     
     img_color=cv2.imread(f"second task/C1_00000{i+4}.png") # open color images
-    img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2RGB) #convert to right color map
+    
+    img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2Luv) #convert to right color map
     color_mask = cv2.merge([binary_mask, binary_mask, binary_mask]) #create color mask 
     img_color_masked = cv2.bitwise_and(color_mask, img_color)
-    if show_images:
+    if show_images_2:
         plt.subplot(1,2,1)
-        plt.imshow(img_color)
+        plt.imshow(img_bw, cmap="gray")
         plt.subplot(1,2,2)
         plt.imshow(img_color_masked)
         plt.show()
     # finding average image colour
-    mean_clr = np.nanmean(np.where(img_color_masked!=0,img_color_masked,np.nan),(0,1))
+    arg = np.where(img_color_masked!=0,img_color_masked,np.nan)
+    print(arg)
+    mean_clr = np.nanmean(arg,(0,1))
+    print("mean is: ", mean_clr)
+    flat = img_color_masked.reshape(-1,3).T
+    flat=flat[:, np.all(flat!=0, 0)]
+    mean_2=np.mean(flat, (0,1))
     print("mean is: ", mean_clr)
     #variance = np.cov(np.where(img_color_masked[:,:,0]!=0,img_color_masked,np[:,:,0].nan))
     #variance = np.cov(np.where(img_color_masked[:,:,1]!=0,img_color_masked,np[:,:,1].nan))
     #variance = np.cov(np.where(img_color_masked[:,:,2]!=0,img_color_masked,np[:,:,2].nan))
-    flat = img_color_masked.reshape(-1,3).T
-    cov = np.cov(np.where(flat!=0, flat, flat))
+    print("flat filtered=", flat)
+    print('shape=', np.shape(flat))
+    cov = np.cov(flat)
     print("variance is: ", cov)
     mean_img = np.zeros(np.shape(img_color))
+    print(mean_clr)
+
     mean_img[:]=mean_clr
-    print("color mask shape: ", np.shape(img_color_masked))
-    print("mean shape: ", np.shape(mean_img))
-    print(type(img_color_masked))
+    print(np.shape(mean_img))
+    print(mean_img[0][0])
+    plt.imshow(mean_img.astype(np.uint8))
+    plt.show()
+    #print("color mask shape: ", np.shape(img_color_masked))
+    #print("mean shape: ", np.shape(mean_img))
+    #print(type(img_color_masked))
     #covar, mean = cv2.calcCovarMatrix(np.where(flat!=0,flat, flat), None, cv2.COVAR_NORMAL | cv2.COVAR_COLS)
     #print("mean with cv2 is: ", mean)
     #print("covar with cv2 is: ", covar)
 
     iconv = np.linalg.inv(cov)
-    vect_mahal= np.vectorize(cv2.Mahalanobis)
+    #vect_mahal= np.vectorize(cv2.Mahalanobis)
 
-    diff = vect_mahal(img_color_masked,mean_img,iconv)  
+    #diff = vect_mahal(img_color_masked,mean_img,iconv)  
+    img_flat = np.reshape(img_color_masked,(270*250,3))
     
-    plt.imshow(diff)
+    mean_flat = np.reshape(mean_img,(270*250,3))
+    diff=img_flat-mean_flat
+    diff[img_flat==0]=0
+    print(diff)
+    mahal = np.sqrt(np.multiply(np.dot(diff,iconv),diff).sum(-1))
+    print(np.shape(mahal))
+    mahal_img = mahal.reshape(270,250)
+    plt.subplot(1,2,1)
+    plt.imshow(img_color)
+    plt.subplot(1,2,2)
+    plt.imshow(mahal_img, cmap="gray")
     plt.show()
 ##########################################
 ## Task 3
