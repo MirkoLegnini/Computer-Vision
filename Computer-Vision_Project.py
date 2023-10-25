@@ -102,7 +102,7 @@ def create_binary_mask(img_blurred, r, min_perc, max_perc):
 
 
 show_images=False
-show_images_2=True
+show_images_2=False
 if 0:
     for i in range (1):    
         ## Parameter declaration for light transformations
@@ -168,12 +168,29 @@ if 0:
 ## Task 2
 ##########################################
 flat_tot=[]
-#img_xd = []
-#for j in range(2):
-#    img_xd.append(cv2.imread(f"second task/C1_00000{j+4}.png"))
-#img_avg = (img_xd[0]+img_xd[1])/2 
-#plt.imshow(img_avg)
-#plt.show()
+img_xd = []
+for j in range(2):
+    img_xd.append(cv2.imread(f"second task/C1_00000{j+4}.png"))
+
+width = min(img_xd[1].shape[1], img_xd[0].shape[1])
+height = min(img_xd[1].shape[0], img_xd[0].shape[0])
+
+image1 = cv2.resize(img_xd[1], (width, height))
+image2 = cv2.resize(img_xd[0], (width, height))
+
+plt.subplot(1,2,1)
+plt.imshow(image1)
+plt.subplot(1,2,2)
+plt.imshow(image2)
+plt.show()
+
+img_avg = (image1.astype(np.uint16) + image2.astype(np.uint16)) // 2
+img_avg = img_avg.astype(np.uint8)
+img_avg=cv2.cvtColor(img_avg, cv2.COLOR_BGR2RGB)
+
+plt.imshow(img_avg)
+plt.show()
+
 for i in range(2):
     min_perc=10
     max_perc=70
@@ -205,9 +222,10 @@ for i in range(2):
 
     mean_mask = cv2.merge([thresh_hsv_img,thresh_hsv_img,thresh_hsv_img])
     img_masked_onV = cv2.bitwise_and(mean_mask, img_color_masked)
-    plt.imshow(img_masked_onV)
-    plt.title("image masked for mean calculation")
-    plt.show()
+    if show_images_2:
+        plt.imshow(img_masked_onV)
+        plt.title("image masked for mean calculation")
+        plt.show()
 
     medianed_img=cv2.medianBlur(np.copy(img_color), 11)
 
