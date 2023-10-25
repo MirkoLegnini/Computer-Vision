@@ -181,9 +181,20 @@ for i in range(2):
     
     img_color=cv2.imread(f"second task/C1_00000{i+4}.png") # open color images
     
-    img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2Luv) #convert to right color map
+    img_color[:,:,2] = exponential_operator(img_color[:,:,2], 0.5).astype(np.uint8) #exponential stretch one color at a time in BGR
+    img_color[:,:,1] = exponential_operator(img_color[:,:,1], 1.5).astype(np.uint8)
+    #img_color[:,:,0] = exponential_operator(img_color[:,:,0], 0.5).astype(np.uint8)
+    img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2HSV) #convert to right color map
     color_mask = cv2.merge([binary_mask, binary_mask, binary_mask]) #create color mask 
     img_color_masked = cv2.bitwise_and(color_mask, img_color)
+
+    medianed_img=cv2.medianBlur(np.copy(img_color), 11)
+    if show_images_2:
+        plt.imshow(medianed_img)
+        plt.title("meadianed image")
+        plt.show()
+    med_img_masked = cv2.bitwise_and(color_mask, medianed_img)
+    #img_color_masked = med_img_masked
     if show_images_2:
         plt.subplot(1,2,1)
         plt.imshow(img_bw, cmap="gray")
@@ -191,14 +202,14 @@ for i in range(2):
         plt.imshow(img_color_masked)
         plt.show()
     # finding average image colour
-    arg = np.where(img_color_masked!=0,img_color_masked,np.nan)
+    arg = np.where(med_img_masked!=0,med_img_masked,np.nan)
     print(arg)
     mean_clr = np.nanmean(arg,(0,1))
     print("mean is: ", mean_clr)
     flat = img_color_masked.reshape(-1,3).T
     flat=flat[:, np.all(flat!=0, 0)]
-    mean_2=np.mean(flat, (0,1))
-    print("mean is: ", mean_clr)
+    mean_2=np.mean(flat, (1))
+    print("mean is: ", mean_2)
     #variance = np.cov(np.where(img_color_masked[:,:,0]!=0,img_color_masked,np[:,:,0].nan))
     #variance = np.cov(np.where(img_color_masked[:,:,1]!=0,img_color_masked,np[:,:,1].nan))
     #variance = np.cov(np.where(img_color_masked[:,:,2]!=0,img_color_masked,np[:,:,2].nan))
@@ -209,7 +220,7 @@ for i in range(2):
     mean_img = np.zeros(np.shape(img_color))
     print(mean_clr)
 
-    mean_img[:]=mean_clr
+    mean_img[:]=mean_2
     print(np.shape(mean_img))
     print(mean_img[0][0])
     plt.imshow(mean_img.astype(np.uint8))
@@ -228,7 +239,7 @@ for i in range(2):
     img_flat = np.reshape(img_color_masked,(np.shape(img_color_masked)[0]*np.shape(img_color_masked)[1],3))
     
     mean_flat = np.reshape(mean_img,(np.shape(img_color_masked)[0]*np.shape(img_color_masked)[1],3))
-    diff=img_flat-mean_flat
+    diff=img_flat-mean_2
     diff[img_flat==0]=0
     print(diff)
     mahal = np.sqrt(np.multiply(np.dot(diff,iconv),diff).sum(-1))
@@ -238,11 +249,28 @@ for i in range(2):
     plt.imshow(img_color)
     plt.subplot(1,2,2)
     plt.imshow(mahal_img, cmap="gray")
+    plt.title("mahalanobis distance")
     plt.show()
     
     hist,bins = np.histogram(mahal_img.flatten(),256,[0,256])
     plt.stem(hist)
     plt.show()
+
+    dist = np.sqrt(np.multiply(diff,diff)).sum(-1)
+    dist_img = dist.reshape(np.shape(img_color_masked)[0],np.shape(img_color_masked)[1])
+    plt.subplot(1,2,1)
+    plt.imshow(img_color)
+    plt.subplot(1,2,2)
+    plt.imshow(dist_img, cmap="gray")
+    plt.title("euclidean distance")
+    plt.show()
+
+    hist,bins = np.histogram(dist_img.flatten(),256,[0,256])
+    plt.stem(hist)
+    plt.show()
+
+
+
 ##########################################
 ## Task 3
 ##########################################
