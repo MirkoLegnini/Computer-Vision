@@ -101,7 +101,7 @@ def create_binary_mask(img_blurred, r, min_perc, max_perc):
     return filled_img
 
 
-show_images=True
+show_images=False
 show_images_2=True
 if 0:
     for i in range (1):    
@@ -168,6 +168,12 @@ if 0:
 ## Task 2
 ##########################################
 flat_tot=[]
+#img_xd = []
+#for j in range(2):
+#    img_xd.append(cv2.imread(f"second task/C1_00000{j+4}.png"))
+#img_avg = (img_xd[0]+img_xd[1])/2 
+#plt.imshow(img_avg)
+#plt.show()
 for i in range(2):
     min_perc=10
     max_perc=70
@@ -181,12 +187,27 @@ for i in range(2):
     binary_mask=create_binary_mask(np.copy(img_blurred), r, min_perc, max_perc)
     img_color=cv2.imread(f"second task/C1_00000{i+4}.png") # open color images
     
-    img_color[:,:,2] = exponential_operator(img_color[:,:,2], 0.5).astype(np.uint8) #exponential stretch one color at a time in BGR
-    img_color[:,:,1] = exponential_operator(img_color[:,:,1], 1.5).astype(np.uint8)
+    img_color[:,:,2] = exponential_operator(img_color[:,:,2], 0.6).astype(np.uint8) #exponential stretch one color at a time in BGR
+    img_color[:,:,1] = exponential_operator(img_color[:,:,1], 1.3).astype(np.uint8)
     #img_color[:,:,0] = exponential_operator(img_color[:,:,0], 0.5).astype(np.uint8)
     img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2HSV) #convert to right color map
     color_mask = cv2.merge([binary_mask, binary_mask, binary_mask]) #create color mask 
     img_color_masked = cv2.bitwise_and(color_mask, img_color)
+    if show_images_2:
+        plt.imshow(img_color_masked[:,:,2],cmap = 'gray')
+        plt.title("V value")
+        plt.show()
+    thresh_hsv, thresh_hsv_img = cv2.threshold(img_color_masked[:,:,2], 190, 255, cv2.THRESH_BINARY)
+    if show_images_2:
+        plt.imshow(thresh_hsv_img, cmap = 'gray')
+        plt.title("threshold on V value")
+        plt.show()
+
+    mean_mask = cv2.merge([thresh_hsv_img,thresh_hsv_img,thresh_hsv_img])
+    img_masked_onV = cv2.bitwise_and(mean_mask, img_color_masked)
+    plt.imshow(img_masked_onV)
+    plt.title("image masked for mean calculation")
+    plt.show()
 
     medianed_img=cv2.medianBlur(np.copy(img_color), 11)
 
@@ -203,86 +224,15 @@ for i in range(2):
         plt.imshow(img_color_masked)
         plt.show()
 
-    flat = img_color_masked.reshape(-1,3).T
+    flat = img_masked_onV.reshape(-1,3).T
     flat=flat[:, np.all(flat!=0, 0)]
-
     flat_tot.append(flat)
-flat_arr=np.concatenate(flat_tot, -1)
-print(np.shape(flat_arr))
-mean=np.mean(flat_arr, 1)
-cov = np.cov(flat)
-print("variance is: ", cov)
-iconv = np.linalg.inv(cov)
-
-for i in range(2):
-    img=cv2.imread(f"second task/C1_00000{i+4}.png")
-    min_perc=10
-    max_perc=70
-    r=0.5
-    img_bw=cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_blurred = cv2.GaussianBlur(np.copy(img_bw), [0,0], 2, None, 2) #gaussian filtering, sigma fine tuned
-    if show_images: 
-        plt.imshow(img, cmap='gray')
-        plt.show()
-    binary_mask=create_binary_mask(np.copy(img_blurred), r, min_perc, max_perc)
-    
-    img_color=cv2.imread(f"second task/C1_00000{i+4}.png") # open color images
-    
-    img_color[:,:,2] = exponential_operator(img_color[:,:,2], 0.5).astype(np.uint8) #exponential stretch one color at a time in BGR
-    img_color[:,:,1] = exponential_operator(img_color[:,:,1], 1.5).astype(np.uint8)
-    #img_color[:,:,0] = exponential_operator(img_color[:,:,0], 0.5).astype(np.uint8)
-    img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2HSV) #convert to right color map
-    color_mask = cv2.merge([binary_mask, binary_mask, binary_mask]) #create color mask 
-    img_color_masked = cv2.bitwise_and(color_mask, img_color)
-
-    medianed_img=cv2.medianBlur(np.copy(img_color), 11)
-    if show_images_2:
-        plt.imshow(medianed_img)
-        plt.title("meadianed image")
-        plt.show()
-    med_img_masked = cv2.bitwise_and(color_mask, medianed_img)
-    #img_color_masked = med_img_masked
-    if show_images_2:
-        plt.subplot(1,2,1)
-        plt.imshow(img_bw, cmap="gray")
-        plt.subplot(1,2,2)
-        plt.imshow(img_color_masked)
-        plt.show()
-    # finding average image colour
-    # arg = np.where(med_img_masked!=0,med_img_masked,np.nan)
-    # print(arg)
-    # mean_clr = np.nanmean(arg,(0,1))
-    # print("mean is: ", mean_clr)
-    # flat = img_color_masked.reshape(-1,3).T
-    # flat=flat[:, np.all(flat!=0, 0)]
-    # mean_2=np.mean(flat, (1))
-    # print("mean is: ", mean_2)
-    # #variance = np.cov(np.where(img_color_masked[:,:,0]!=0,img_color_masked,np[:,:,0].nan))
-    # #variance = np.cov(np.where(img_color_masked[:,:,1]!=0,img_color_masked,np[:,:,1].nan))
-    # #variance = np.cov(np.where(img_color_masked[:,:,2]!=0,img_color_masked,np[:,:,2].nan))
-    # print("flat filtered=", flat)
-    # print('shape=', np.shape(flat))
-    # cov = np.cov(flat)
-    # print("variance is: ", cov)
-    # mean_img = np.zeros(np.shape(img_color))
-    # print(mean_clr)
-
-    # mean_img[:]=mean_2
-    # print(np.shape(mean_img))
-    # print(mean_img[0][0])
-    # plt.imshow(mean_img.astype(np.uint8))
-    # plt.show()
-    # #print("color mask shape: ", np.shape(img_color_masked))
-    # #print("mean shape: ", np.shape(mean_img))
-    # #print(type(img_color_masked))
-    # #covar, mean = cv2.calcCovarMatrix(np.where(flat!=0,flat, flat), None, cv2.COVAR_NORMAL | cv2.COVAR_COLS)
-    # #print("mean with cv2 is: ", mean)
-    # #print("covar with cv2 is: ", covar)
-
-    # iconv = np.linalg.inv(cov)
-
-
-
+    flat_arr=np.concatenate(flat_tot, -1)
+    print(np.shape(flat_arr))
+    mean=np.mean(flat_arr, 1)
+    cov = np.cov(flat)
+    print("variance is: ", cov)
+    iconv = np.linalg.inv(cov)
 
     ##Actual computation of the distance
 
@@ -295,29 +245,33 @@ for i in range(2):
     mahal = np.sqrt(np.multiply(np.dot(diff,iconv),diff).sum(-1))
     print(np.shape(mahal))
     mahal_img = mahal.reshape(np.shape(img_color_masked)[0],np.shape(img_color_masked)[1])
-    plt.subplot(1,2,1)
-    plt.imshow(img_color)
-    plt.subplot(1,2,2)
-    plt.imshow(mahal_img, cmap="gray")
-    plt.title("mahalanobis distance")
-    plt.show()
+    if show_images_2:
+        plt.subplot(1,2,1)
+        plt.imshow(img_color)
+        plt.subplot(1,2,2)
+        plt.imshow(mahal_img, cmap="gray")
+        plt.title("mahalanobis distance")
+        plt.show()
     
     hist,bins = np.histogram(mahal_img.flatten(),256,[0,256])
-    plt.stem(hist)
-    plt.show()
+    if show_images_2:
+        plt.stem(hist)
+        plt.show()
 
     dist = np.sqrt(np.multiply(diff,diff)).sum(-1)
     dist_img = dist.reshape(np.shape(img_color_masked)[0],np.shape(img_color_masked)[1])
-    plt.subplot(1,2,1)
-    plt.imshow(img_color)
-    plt.subplot(1,2,2)
-    plt.imshow(dist_img, cmap="gray")
-    plt.title("euclidean distance")
-    plt.show()
+    if show_images_2:
+        plt.subplot(1,2,1)
+        plt.imshow(img_color)
+        plt.subplot(1,2,2)
+        plt.imshow(dist_img, cmap="gray")
+        plt.title("euclidean distance")
+        plt.show()
 
     hist,bins = np.histogram(dist_img.flatten(),256,[0,256])
-    plt.stem(hist)
-    plt.show()
+    if show_images_2:
+        plt.stem(hist)
+        plt.show()
 
 
 
