@@ -87,6 +87,20 @@ def create_binary_mask(img, r, min_perc, max_perc):
     return filled_img
 
 
+def create_stats():
+    flat_list=[]
+    for i in range(10):
+        img=cv2.imread(f"second task/stats/{i+1}.png")
+        flat = img.reshape(-1,3).T
+        flat_list.append(flat)
+    flat_arr = np.concatenate(flat_list, -1)
+
+    mean = np.mean(flat_arr, 1)
+    print(mean)
+    cov = np.cov(flat_arr)
+    iconv = np.linalg.inv(cov)
+    return mean, iconv
+
 ##########################################
 ## Task 1
 ##########################################
@@ -94,7 +108,7 @@ def create_binary_mask(img, r, min_perc, max_perc):
 show_images = False
 show_images_2 = True
 
-for i in range (3):    
+for i in range (0):    
     ## Parameter declaration for light transformations
     min_perc=10
     max_perc=70
@@ -213,7 +227,7 @@ for i in range(2):
     img_bw = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)                        # we use colored image and change it in BW instead of using standard BW because of parallax
     
     img_blurred = cv2.GaussianBlur(np.copy(img_bw), [0,0], 2, None, 2)    # gaussian filtering, sigma fine tuned
-    binary_mask = create_binary_mask(np.copy(img), r, min_perc, max_perc)
+    binary_mask = create_binary_mask(np.copy(img_bw), r, min_perc, max_perc)
     
     img_color = cv2.imread(f"second task/C1_00000{i+4}.png")              # open color images
     """
@@ -281,10 +295,8 @@ for i in range(2):
     cov = np.cov(flat)
     iconv = np.linalg.inv(cov)
 
-    # print(np.shape(flat_arr))
-    # print("variance is: ", cov)
 
-    ## Actual computation of the distance
+    mean, iconv = create_stats()
       
     img_flat = np.reshape(img_color_masked,(np.shape(img_color_masked)[0]*np.shape(img_color_masked)[1],3))
     diff = img_flat-mean
@@ -320,11 +332,17 @@ for i in range(2):
         plt.stem(hist_eucl)
         plt.show()
 
-    mahal_img_blurred = cv2.GaussianBlur(np.copy(mahal_img), [0,0], 3, None, 3)
-    transformed_img = linear_stretching(mahal_img_blurred, hist_mahal, min_perc, max_perc)
-    ret, thresholded_mahal_image = cv2.threshold(transformed_img, 200, 255, cv2.THRESH_BINARY_INV)
+    mahal_img_blurred = cv2.GaussianBlur(np.copy(mahal_img), [0,0], 2, None, 2)
+    transformed_img = linear_stretching(mahal_img_blurred, hist_mahal, 60, 80)
+    hist_mahal,bins_mahal = np.histogram(transformed_img.flatten(),256,[0,256])
+    plt.stem(hist_mahal)
+    plt.show()
 
+    ret, thresholded_mahal_image = cv2.threshold(mahal_img_blurred.astype(np.uint8), 128, 255, cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+
+    
     russet_mask = cv2.merge([thresholded_mahal_image, thresholded_mahal_image, thresholded_mahal_image])
+    print(np.shape(russet_mask))
     norusset_img = cv2.bitwise_and(russet_mask, img_color)
 
     plt.imshow(norusset_img)
