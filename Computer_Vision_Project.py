@@ -39,6 +39,8 @@ def create_binary_mask(img, r, min_perc, max_perc):
     gamma_img = exponential_operator(np.copy(img_blurred), r)
     hist,bins = np.histogram(img_blurred.flatten(),256,[0,256])
 
+    # QUA PERCHE PER FARE IL LINEAR STRETCHING VIENE USATA LA IMMAGINE EXPONENTIAL E L HISTOGRAM DELLA BLURRED
+    
     transformed_img = linear_stretching(gamma_img,hist, min_perc, max_perc)
     
     if show_images:
@@ -89,7 +91,7 @@ def create_binary_mask(img, r, min_perc, max_perc):
 
 def create_stats():
     flat_list=[]
-    for i in range(10):
+    for i in range(25):
         img=cv2.imread(f"second task/stats/{i+1}.png")
         flat = img.reshape(-1,3).T
         flat_list.append(flat)
@@ -119,8 +121,6 @@ for i in range (0):
     if show_images: 
         plt.imshow(img, cmap='gray')
         plt.show()
-
-    print
 
     binary_mask = create_binary_mask(np.copy(img), r, min_perc, max_perc)
     color_mask = cv2.merge([binary_mask, binary_mask, binary_mask])     # create color mask 
@@ -332,19 +332,53 @@ for i in range(2):
         plt.stem(hist_eucl)
         plt.show()
 
-    mahal_img_blurred = cv2.GaussianBlur(np.copy(mahal_img), [0,0], 2, None, 2)
-    transformed_img = linear_stretching(mahal_img_blurred, hist_mahal, 60, 80)
-    hist_mahal,bins_mahal = np.histogram(transformed_img.flatten(),256,[0,256])
-    plt.stem(hist_mahal)
+    mahal_img_blurred = cv2.GaussianBlur(np.copy(mahal_img), [0,0], 1.5, None, 1.5)
+
+    # remove background
+    mahal_img_blurred = mahal_img_blurred.astype(float)
+    black_pixels = (mahal_img_blurred == 0)
+    mahal_img_blurred[black_pixels] = np.nan
+   
+    # applying exponential operator
+    exp_img = exponential_operator(mahal_img_blurred, 0.45)
+    exp_hist_mahal,bins_mahal = np.histogram(exp_img.flatten(),256,[0,256])
+
+    plt.subplot(1,2,1)
+    plt.title("Exp Image")
+    plt.imshow(exp_img, cmap="gray")
+    plt.subplot(1,2,2)
+    plt.title("Exp Histogram")
+    plt.stem(exp_hist_mahal)
     plt.show()
 
-    ret, thresholded_mahal_image = cv2.threshold(mahal_img_blurred.astype(np.uint8), 128, 255, cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+    # stretching linearly
+    transformed_img = linear_stretching(np.copy(exp_img), exp_hist_mahal, 50, 80)
+    stretch_hist_mahal,bins_mahal = np.histogram(transformed_img.flatten(),256,[0,256])
 
-    
+    plt.subplot(2,2,1)
+    plt.title("Mahalanobis Original Image")
+    plt.imshow(mahal_img, cmap="gray")
+    plt.subplot(2,2,2)
+    plt.title("Mahalanobis Original Histogram")
+    plt.stem(hist_mahal)
+    plt.subplot(2,2,3)
+    plt.title("Stretched Mahalanobis Image")
+    plt.imshow(transformed_img, cmap = 'gray')
+    plt.subplot(2,2,4)
+    plt.title("Stretched Mahalanobis Histogram")
+    plt.stem(stretch_hist_mahal)
+    plt.show()
+
+    ret, thresholded_mahal_image = cv2.threshold(transformed_img.astype(np.uint8), 126, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    # ret, thresholded_mahal_image = cv2.threshold(mahal_img_blurred.astype(np.uint8), 22, 255, cv2.THRESH_BINARY_INV+ cv2.THRESH_OTSU)
+
     russet_mask = cv2.merge([thresholded_mahal_image, thresholded_mahal_image, thresholded_mahal_image])
-    print(np.shape(russet_mask))
     norusset_img = cv2.bitwise_and(russet_mask, img_color)
-
+     
+    plt.subplot(1,2,1)
+    plt.imshow(img_color)
+    plt.title("Image Colored")
+    plt.subplot(1,2,2)
     plt.imshow(norusset_img)
     plt.title("Image With No Russet")
     plt.show()
