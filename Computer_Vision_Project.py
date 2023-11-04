@@ -107,7 +107,7 @@ def create_stats():
 ## Task 1
 ##########################################
 
-show_images = False
+show_images = True
 show_images_2 = False
 show_images_3 = True
 
@@ -390,11 +390,79 @@ if 0:
 ##########################################
 
 
-for i in range (4):    
+def create_binary_mask_2(img, r, min_perc, max_perc):
+    img_blurred = cv2.GaussianBlur(np.copy(img), [0,0], 2, None, 2)     # gaussian filtering, sigma fine tuned
+    gamma_img = exponential_operator(np.copy(img_blurred), r)
+    hist,bins = np.histogram(img_blurred.flatten(),256,[0,256])
+
+    # QUA PERCHE PER FARE IL LINEAR STRETCHING VIENE USATA LA IMMAGINE EXPONENTIAL E L HISTOGRAM DELLA BLURRED
+    
+    transformed_img = linear_stretching(gamma_img,hist, min_perc, max_perc)
+    
+    if show_images:
+        plt.imshow(transformed_img,cmap = 'gray',vmin=0,vmax=255)
+        plt.show()
+
+    thresh, thres_transformed_image = cv2.threshold(transformed_img, 127, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)    #thresholding on transformed image
+
+    if show_images:
+
+        plt.imshow(thres_transformed_image, cmap='gray')
+        plt.show()
+
+    filled_img=cv2.medianBlur(np.copy(thres_transformed_image), 13)
+
+    if show_images:
+        plt.title("filled_img")
+        plt.imshow(filled_img, cmap='gray')
+        plt.show()
+
+    params = cv2.SimpleBlobDetector_Params()            # create parameters for blob detection
+    params.filterByArea = False
+    params.minArea = 100
+    params.minRepeatability = 1
+    #params.minThreshold = 0
+    #params.maxThreshold = 255
+    params.minDistBetweenBlobs = 4
+    params.filterByCircularity = False 
+    params.filterByInertia = False
+    params.filterByConvexity = False
+    params.filterByColor = True
+    params.blobColor = 255
+    detector = cv2.SimpleBlobDetector_create(params)
+    keypoints = detector.detect(filled_img)             # find key points for blobs
+    
+    if show_images and np.size(keypoints)!=0:
+        blank = np.zeros((1, 1))
+        blobs = cv2.drawKeypoints(filled_img, keypoints, blank, (0, 255, 0),cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        plt.title("blobs")
+        plt.imshow(blobs)
+        plt.show()
+    sizes = []
+    for kp in keypoints:
+        sizes.append(kp.size)
+    idx = np.argmax(sizes)
+    print(idx)
+    points = cv2.KeyPoint_convert(keypoints)
+    points = np.delete(points, idx, 0)
+    print(points)
+    
+    #print(points)
+    for pt in points:                                   # flood fill eventual holes in the apple
+        cv2.floodFill(filled_img, None, tuple(pt.astype(int)), 0)
+    
+    if show_images: 
+        plt.imshow(filled_img, cmap='gray')
+        plt.show()
+    
+    return filled_img
+
+
+for i in range (5):    
     ## Parameter declaration for light transformations
-    min_perc=20
+    min_perc=10
     max_perc=70
-    r=1.35
+    r=1.3
 
     img = cv2.imread(f"final challenge/C0_00000{i+6}.png", cv2.IMREAD_GRAYSCALE)
     img_blurred = cv2.GaussianBlur(np.copy(img), [0,0], 2, None, 2)     # gaussian filtering, sigma fine tuned
@@ -402,7 +470,8 @@ for i in range (4):
         plt.imshow(img, cmap='gray')
         plt.show()
 
-    binary_mask = create_binary_mask(np.copy(img), r, min_perc, max_perc)
+    binary_mask = create_binary_mask_2(np.copy(img), r, min_perc, max_perc)
+    
     color_mask = cv2.merge([binary_mask, binary_mask, binary_mask])     # create color mask 
     img_masked = cv2.bitwise_and(binary_mask, img)
 
