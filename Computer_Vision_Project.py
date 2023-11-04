@@ -170,8 +170,6 @@ for i in range (0):
 ## Task 2
 ##########################################
 
-flat_tot = []
-
 '''
 for k in range(2):
     img = cv2.imread(f"second task/C0_00000{k+4}.png")
@@ -188,50 +186,18 @@ for i in range(2):
     min_perc = 10
     max_perc = 70
     r=0.5
+    
+    img_color = cv2.imread(f"second task/C1_00000{i+4}.png")              # open color images
+    img_color = cv2.cvtColor(np.copy(img_color), cv2.COLOR_BGR2RGB)
 
+    """
     img = cv2.imread(f"second task/C1_00000{i+4}.png")
     img_bw = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)                        # we use colored image and change it in BW instead of using standard BW because of parallax
     
     img_blurred = cv2.GaussianBlur(np.copy(img_bw), [0,0], 2, None, 2)    # gaussian filtering, sigma fine tuned
     binary_mask = create_binary_mask(np.copy(img_bw), r, min_perc, max_perc)
-    
-    img_color = cv2.imread(f"second task/C1_00000{i+4}.png")              # open color images
-    """
-    img_color[:,:,2] = exponential_operator(img_color[:,:,2], 0.6).astype(np.uint8) #exponential stretch one color at a time in BGR
-    img_color[:,:,1] = exponential_operator(img_color[:,:,1], 1.3).astype(np.uint8)
-    #img_color[:,:,0] = exponential_operator(img_color[:,:,0], 0.5).astype(np.uint8)
-    """
-    img_color = cv2.cvtColor(img_color, cv2.COLOR_BGR2RGB)              # convert to right color map
-
     color_mask = cv2.merge([binary_mask, binary_mask, binary_mask])     # create color mask
     img_color_masked = cv2.bitwise_and(color_mask, img_color)
-
-    """
-    if show_images_2:
-        plt.imshow(img_color_masked[:,:,2],cmap = 'gray')
-        plt.title("V value")
-        plt.show()
-        
-    thresh_hsv, thresh_hsv_img = cv2.threshold(img_color_masked[:,:,2], 190, 255, cv2.THRESH_BINARY)
-
-    if show_images_2:
-        plt.imshow(thresh_hsv_img, cmap = 'gray')
-        plt.title("threshold on V value")
-        plt.show()
-
-    mean_mask = cv2.merge([thresh_hsv_img,thresh_hsv_img,thresh_hsv_img])
-    img_masked_onV = cv2.bitwise_and(mean_mask, img_color_masked)
-
-    if show_images_2:
-        plt.imshow(img_masked_onV)
-        plt.title("image masked for mean calculation")
-        plt.show()
-
-    medianed_img=cv2.medianBlur(np.copy(img_color), 11)
-    med_img_masked = cv2.bitwise_and(color_mask, medianed_img)
-    img_color_masked = med_img_masked
-    """
-
     if show_images_2:
         plt.subplot(1,3,1)
         plt.title("BW Image")
@@ -243,19 +209,20 @@ for i in range(2):
         plt.title("Masked Image")
         plt.imshow(img_color_masked)
         plt.show()
+    """
 
     # select the right section of the image
 
-    img_color_masked = cv2.cvtColor(img_color_masked, cv2.COLOR_RGB2LAB)[:,:,1:3]
+    img_color_AB = cv2.cvtColor(np.copy(img_color), cv2.COLOR_RGB2LAB)[:,:,1:3]
 
     mean, iconv = create_stats()
-      
-    img_flat = np.reshape(img_color_masked,(np.shape(img_color_masked)[0]*np.shape(img_color_masked)[1],2))
+    
+    img_flat = np.reshape(img_color_AB,(np.shape(img_color)[0]*np.shape(img_color)[1],2))
     diff = img_flat-mean
     diff[img_flat==0] = 0
     
     mahal = np.sqrt(np.multiply(np.dot(diff,iconv),diff).sum(-1))
-    mahal_img = np.reshape(mahal, (np.shape(img_color_masked)[0],np.shape(img_color_masked)[1]))
+    mahal_img = np.reshape(mahal, (np.shape(img_color)[0],np.shape(img_color)[1]))
     hist_mahal,bins_mahal = np.histogram(mahal_img.flatten(),256,[0,256])
 
     # print(diff)
@@ -263,7 +230,7 @@ for i in range(2):
     # print(np.shape(mahal_img))
 
     dist = np.sqrt(np.multiply(diff,diff)).sum(-1)
-    dist_img = dist.reshape(np.shape(img_color_masked)[0],np.shape(img_color_masked)[1])
+    dist_img = dist.reshape(np.shape(img_color)[0],np.shape(img_color)[1])
     hist_eucl,bins_eucl = np.histogram(dist_img.flatten(),256,[0,256])
 
     if show_images_2:
@@ -284,6 +251,7 @@ for i in range(2):
         plt.stem(hist_eucl)
         plt.show()
 
+
     mahal_img_blurred = cv2.GaussianBlur(np.copy(mahal_img), [0,0], 1, None, 1)
     blurred_hist_mahal,bins_mahal = np.histogram(mahal_img_blurred.flatten(),256,[0,256])
 
@@ -297,6 +265,36 @@ for i in range(2):
     # stretching linearly
     transformed_img = linear_stretching(np.copy(mahal_img_blurred), blurred_hist_mahal, 0.1, 99)
     stretch_hist_mahal,bins_mahal = np.histogram(transformed_img.flatten(),256,[0,256])
+
+    # applying exponential operator
+    exp_img = exponential_operator(mahal_img_blurred, 0.02)
+    exp_hist_mahal,bins_mahal = np.histogram(exp_img.flatten(),256,[0,256])
+    # transformed_img = cv2.equalizeHist(mahal_img_blurred.astype(np.uint8))
+
+    ret, thresholded_mahal_image = cv2.threshold(exp_img.astype(np.uint8), 100, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # ret, thresholded_mahal_image = cv2.threshold(mahal_img_blurred.astype(np.uint8), 22, 255, cv2.THRESH_BINARY_INV+ cv2.THRESH_OTSU)
+
+    russet_mask = cv2.merge([thresholded_mahal_image, thresholded_mahal_image, thresholded_mahal_image])
+    norusset_img = cv2.bitwise_and(russet_mask.astype(np.uint8), img_color)
+
+    if show_images_2:
+        plt.subplot(3,2,1)
+        plt.title("Image Colored")
+        plt.imshow(img_color)
+        plt.subplot(3,2,3)
+        plt.title("Mahalanobis Distance")
+        plt.imshow(mahal_img, cmap="gray")
+        plt.subplot(3,2,4)
+        plt.title("Mahalanobis Histogram")
+        plt.stem(hist_mahal)
+        plt.subplot(3,2,5)
+        plt.title("Euclidean Distance")
+        plt.imshow(dist_img, cmap="gray")
+        plt.subplot(3,2,6)
+        plt.title("Euclidian Histogram")
+        plt.stem(hist_eucl)
+        plt.show()
+
 
     if show_images_2:
         plt.subplot(2,2,1)
@@ -313,11 +311,6 @@ for i in range(2):
         plt.stem(stretch_hist_mahal)
         plt.show()
 
-    # applying exponential operator
-    exp_img = exponential_operator(transformed_img, 3)
-    exp_hist_mahal,bins_mahal = np.histogram(exp_img.flatten(),256,[0,256])
-    
-    # transformed_img = cv2.equalizeHist(mahal_img_blurred.astype(np.uint8))
 
     if show_images_2:
         plt.subplot(1,2,1)
@@ -327,12 +320,7 @@ for i in range(2):
         plt.title("Exp Histogram")
         plt.stem(exp_hist_mahal)
         plt.show()
-
-    ret, thresholded_mahal_image = cv2.threshold(transformed_img.astype(np.uint8), 1.3, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    # ret, thresholded_mahal_image = cv2.threshold(mahal_img_blurred.astype(np.uint8), 22, 255, cv2.THRESH_BINARY_INV+ cv2.THRESH_OTSU)
-
-    russet_mask = cv2.merge([thresholded_mahal_image, thresholded_mahal_image, thresholded_mahal_image])
-    norusset_img = cv2.bitwise_and(russet_mask.astype(np.uint8), img_color)
+        
     if show_images_2:
         plt.subplot(1,2,1)
         plt.imshow(img_color)
